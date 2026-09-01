@@ -1,1 +1,9 @@
 .claude
+CRM-Kafka-60-Day-Roadmap.md
+
+server/.env
+server\.env
+node_modules/
+dist/
+coverage/
+*.log
