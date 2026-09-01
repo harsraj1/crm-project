@@ -54,7 +54,7 @@ It is designed with an **event-driven architecture using Kafka**, making it scal
 
 ### 🤖 AI Features
 - Lead scoring system
-- AI-generated summaries for leads (OpenAI GPT-4o-mini)
+- AI-generated summaries for leads (OpenAI GPT-4o-mini or Hugging Face free alternative)
 - Insight panel for decision-making
 
 ### 🧪 Testing & Quality
@@ -78,7 +78,7 @@ It is designed with an **event-driven architecture using Kafka**, making it scal
 | Database         | MongoDB (Atlas) + Mongoose ODM     |
 | Event Streaming  | Apache Kafka (KafkaJS)             |
 | Auth             | JWT + bcrypt                       |
-| AI Integration   | OpenAI / Anthropic API             |
+| AI Integration   | OpenAI / Hugging Face (free alternative) |
 | Containers       | Docker + Docker Compose            |
 | Testing          | Jest + Supertest                   |
 | Styling          | Tailwind CSS                       |
@@ -148,22 +148,47 @@ git clone https://github.com/harsraj1/crm-project.git
 cd crm-project
 ```
 
-### 2. Start with Docker (Recommended)
+### 2. Start with Docker (recommended)
 
 ```bash
-# Start all services (MongoDB, Kafka, Zookeeper, Redis, Backend, Frontend)
-docker-compose up -d
-
-# View logs
-docker-compose logs -f backend
-docker-compose logs -f frontend
+docker compose up --build
 ```
+
+That single command starts MongoDB, loads idempotent demo data, and starts the API and frontend. Kafka is optional in the baseline so CRM writes remain available without an event broker.
 
 Services will be available at:
 - **Frontend**: http://localhost:5173
 - **Backend API**: http://localhost:5000
 - **MongoDB**: localhost:27017
-- **Kafka**: localhost:9092
+
+Demo accounts:
+
+| Role | Email | Password |
+|---|---|---|
+| Admin | `admin@crm.local` | `AdminDemo123!` |
+| Sales | `sales@crm.local` | `SalesDemo123!` |
+
+These credentials are for local development only and can be overridden with the `SEED_ADMIN_*` and `SEED_SALES_*` environment variables.
+
+To include the event-driven services, enable the Kafka profile and flag:
+
+```powershell
+$env:KAFKA_ENABLED='true'; docker compose --profile kafka up --build
+```
+
+```bash
+KAFKA_ENABLED=true docker compose --profile kafka up --build
+```
+
+### Production-like container run
+
+The production compose file builds immutable API and Nginx frontend images without source bind mounts. Set a strong secret, then start it:
+
+```bash
+JWT_SECRET=replace-with-at-least-32-random-characters docker compose -f docker-compose.prod.yml up -d --build
+```
+
+Open `http://localhost:8080`. For an internet-facing deployment, terminate TLS at a managed load balancer/reverse proxy, inject secrets through the hosting platform, and use managed MongoDB/Kafka where possible.
 
 ### 3. Or Run Locally (Manual)
 
@@ -173,6 +198,7 @@ cd server
 cp .env.example .env
 # Edit .env with your values
 npm install
+npm run seed
 npm run dev
 ```
 
@@ -192,15 +218,26 @@ PORT=5000
 MONGO_URI=mongodb://localhost:27017/crm
 JWT_SECRET=your-super-secret-jwt-key-min-32-chars
 JWT_EXPIRES_IN=7d
+KAFKA_ENABLED=false
 KAFKA_BROKER=localhost:9092
 CLIENT_URL=http://localhost:5173
 OPENAI_API_KEY=your-openai-key
+HF_TOKEN=your-hugging-face-token
+HF_MODEL=mistralai/Mistral-7B-Instruct-v0.2  # optional
+AI_PROVIDER=openai  # or huggingface
 ```
 
 **Client (.env)**
 ```env
 VITE_API_URL=http://localhost:5000/api
 VITE_ENABLE_AI_FEATURES=true
+```
+
+After the stack is running, the repeatable API acceptance check is:
+
+```bash
+cd server
+npm run smoke
 ```
 
 ---
@@ -243,7 +280,12 @@ chore(scope): description    # Maintenance
 
 ---
 
-## 📈 Roadmap (60 Days)
+## 📈 Fast-track roadmap
+
+The implementation plan has been condensed into [10 outcome-based phases](docs/10-phase-roadmap.md), based on the current repository state. The original 60-day plan remains useful as learning material, but the 10-phase plan is the delivery source of truth.
+
+<details>
+<summary>Original 60-day roadmap</summary>
 
 | Phase | Days | Focus |
 |-------|------|-------|
@@ -298,6 +340,8 @@ chore(scope): description    # Maintenance
 - [ ] Monitoring (Prometheus/Grafana)
 - [ ] Logging (ELK/Loki)
 - [ ] Production hardening
+
+</details>
 
 ---
 
