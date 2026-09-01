@@ -1,6 +1,6 @@
-import { consumer, TOPICS, producer } from '../kafka/client.js';
-import { processAiSummary } from '../services/ai.service.js';
-import { createNotification } from '../services/notification.service.js';
+import { consumer, TOPICS } from './client.js';
+import { processAiSummary } from '../src/services/ai.service.js';
+import { createNotification } from '../src/services/notification.service.js';
 
 export const startConsumers = async () => {
   await consumer.subscribe({ topics: Object.values(TOPICS), fromBeginning: false });

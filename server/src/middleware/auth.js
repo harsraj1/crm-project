@@ -1,4 +1,4 @@
-import { AppError, AuthenticationError } from '../utils/errors.js';
+import { AppError, AuthenticationError } from '../utils/AppError.js';
 import { verifyToken } from '../utils/jwt.js';
 import { User } from '../models/User.js';
 

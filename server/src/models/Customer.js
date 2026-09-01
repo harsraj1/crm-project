@@ -46,7 +46,6 @@ customerSchema.virtual('fullName').get(function() {
   return `${this.firstName} ${this.lastName}`;
 });
 
-customerSchema.index({ email: 1 });
 customerSchema.index({ status: 1 });
 customerSchema.index({ assignedTo: 1 });
 

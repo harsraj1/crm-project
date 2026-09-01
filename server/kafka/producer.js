@@ -1,6 +1,7 @@
-import { producer, TOPICS } from '../kafka/client.js';
+import { producer, TOPICS } from './client.js';
 
 export const publishEvent = async (topic, key, value) => {
+  if (process.env.KAFKA_ENABLED === 'false') return;
   try {
     await producer.send({
       topic,

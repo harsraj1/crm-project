@@ -1,5 +1,5 @@
 import { Activity } from '../models/Activity.js';
-import { AppError, NotFoundError } from '../utils/errors.js';
+import { AppError, NotFoundError } from '../utils/AppError.js';
 import { Lead } from '../models/Lead.js';
 
 export const getActivitiesByLead = async (req, res, next) => {

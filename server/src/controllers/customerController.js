@@ -1,6 +1,6 @@
 import { Customer } from '../models/Customer.js';
-import { AppError, NotFoundError } from '../utils/errors.js';
-import { publishCustomerCreated } from '../kafka/producer.js';
+import { AppError, NotFoundError } from '../utils/AppError.js';
+import { publishCustomerCreated } from '../../kafka/producer.js';
 
 export const getAllCustomers = async (req, res, next) => {
   try {
@@ -52,6 +52,9 @@ export const getCustomer = async (req, res, next) => {
     const customer = await Customer.findById(req.params.id)
       .populate('assignedTo', 'name email avatar');
     if (!customer) throw new NotFoundError('Customer');
+    if (!['admin', 'manager'].includes(req.user.role) && customer.assignedTo?._id?.toString() !== req.user.id) {
+      throw new AppError('Not authorized', 403);
+    }
     res.status(200).json({ success: true, data: customer });
   } catch (error) {
     next(error);
@@ -60,7 +63,9 @@ export const getCustomer = async (req, res, next) => {
 
 export const createCustomer = async (req, res, next) => {
   try {
-    const customer = await Customer.create({ ...req.body, assignedTo: req.body.assignedTo || req.user.id });
+    const canAssign = ['admin', 'manager'].includes(req.user.role);
+    const assignedTo = canAssign && req.body.assignedTo ? req.body.assignedTo : req.user.id;
+    const customer = await Customer.create({ ...req.body, assignedTo });
     await publishCustomerCreated(customer);
     res.status(201).json({ success: true, data: customer });
   } catch (error) {
@@ -70,11 +75,13 @@ export const createCustomer = async (req, res, next) => {
 
 export const updateCustomer = async (req, res, next) => {
   try {
-    const customer = await Customer.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true
-    });
+    const customer = await Customer.findById(req.params.id);
     if (!customer) throw new NotFoundError('Customer');
+    if (!['admin', 'manager'].includes(req.user.role) && customer.assignedTo?.toString() !== req.user.id) {
+      throw new AppError('Not authorized', 403);
+    }
+    Object.assign(customer, req.body);
+    await customer.save();
     res.status(200).json({ success: true, data: customer });
   } catch (error) {
     next(error);
@@ -83,9 +90,13 @@ export const updateCustomer = async (req, res, next) => {
 
 export const deleteCustomer = async (req, res, next) => {
   try {
-    const customer = await Customer.findByIdAndDelete(req.params.id);
+    const customer = await Customer.findById(req.params.id);
     if (!customer) throw new NotFoundError('Customer');
-    res.status(204).json({ success: true });
+    if (!['admin', 'manager'].includes(req.user.role) && customer.assignedTo?.toString() !== req.user.id) {
+      throw new AppError('Not authorized', 403);
+    }
+    await customer.deleteOne();
+    res.status(204).send();
   } catch (error) {
     next(error);
   }

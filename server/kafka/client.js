@@ -13,6 +13,10 @@ export const producer = kafka.producer();
 export const consumer = kafka.consumer({ groupId: 'crm-consumer-group' });
 
 export const connectKafka = async () => {
+  if (process.env.KAFKA_ENABLED === 'false') {
+    console.log('ℹ️ Kafka disabled by configuration');
+    return;
+  }
   try {
     await producer.connect();
     await consumer.connect();
@@ -24,6 +28,7 @@ export const connectKafka = async () => {
 };
 
 export const disconnectKafka = async () => {
+  if (process.env.KAFKA_ENABLED === 'false') return;
   await producer.disconnect();
   await consumer.disconnect();
   console.log('🔌 Kafka disconnected');

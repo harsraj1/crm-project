@@ -1,17 +1,17 @@
 import { User } from '../models/User.js';
-import { AppError, AuthenticationError } from '../utils/errors.js';
+import { AppError, AuthenticationError } from '../utils/AppError.js';
 import { createSendToken } from '../utils/jwt.js';
 
 export const signup = async (req, res, next) => {
   try {
-    const { name, email, password, role = 'sales' } = req.body;
+    const { name, email, password } = req.body;
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return next(new AppError('Email already in use', 400));
     }
 
-    const user = await User.create({ name, email, password, role });
+    const user = await User.create({ name, email, password, role: 'sales' });
     createSendToken(user, 201, res);
   } catch (error) {
     next(error);
@@ -58,6 +58,30 @@ export const getMe = async (req, res, next) => {
     if (!user) {
       return next(new AppError('User not found', 404));
     }
+    res.status(200).json({
+      success: true,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        avatar: user.avatar,
+        lastLogin: user.lastLogin
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateMe = async (req, res, next) => {
+  try {
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { name: req.body.name, email: req.body.email },
+      { new: true, runValidators: true }
+    );
+    if (!user) return next(new AppError('User not found', 404));
     res.status(200).json({
       success: true,
       user: {

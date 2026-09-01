@@ -1,6 +1,6 @@
 import { AppError } from '../utils/AppError.js';
 
-export const errorHandler = (err, req, res, next) => {
+export const errorHandler = (err, _req, res, _next) => {
   const statusCode = err.statusCode || 500;
   const isOperational = err.isOperational || false;
 

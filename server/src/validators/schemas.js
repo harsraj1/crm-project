@@ -1,30 +1,27 @@
 import { z } from 'zod';
 
 export const registerSchema = z.object({
-  body: z.object({
     name: z.string().min(2).max(50),
     email: z.string().email(),
-    password: z.string().min(8).max(128),
-    role: z.enum(['admin', 'manager', 'sales']).optional()
-  })
+    password: z.string().min(8).max(128)
 });
 
 export const loginSchema = z.object({
-  body: z.object({
     email: z.string().email(),
     password: z.string().min(1)
-  })
 });
 
 export const updatePasswordSchema = z.object({
-  body: z.object({
     currentPassword: z.string().min(1),
     newPassword: z.string().min(8).max(128)
-  })
+});
+
+export const updateProfileSchema = z.object({
+  name: z.string().min(2).max(50),
+  email: z.string().email()
 });
 
 export const leadSchema = z.object({
-  body: z.object({
     name: z.string().min(1).max(100),
     email: z.string().email(),
     phone: z.string().optional(),
@@ -36,36 +33,28 @@ export const leadSchema = z.object({
     tags: z.array(z.string()).optional(),
     notes: z.string().max(5000).optional(),
     nextFollowUp: z.string().datetime().optional()
-  })
 });
 
 export const activitySchema = z.object({
-  body: z.object({
     type: z.enum(['call', 'email', 'meeting', 'note', 'task']),
     subject: z.string().min(1).max(200),
     description: z.string().max(5000).optional(),
     duration: z.number().min(0).optional(),
     outcome: z.string().optional(),
     nextFollowUp: z.string().datetime().optional()
-  })
 });
 
 export const customerSchema = z.object({
-  body: z.object({
-    name: z.string().min(1).max(100),
+    firstName: z.string().min(1).max(50),
+    lastName: z.string().min(1).max(50),
     email: z.string().email(),
     phone: z.string().optional(),
     company: z.string().max(100).optional(),
-    address: z.object({
-      street: z.string().optional(),
-      city: z.string().optional(),
-      state: z.string().optional(),
-      zipCode: z.string().optional(),
-      country: z.string().optional()
-    }).optional(),
+    status: z.enum(['prospect', 'active', 'inactive', 'churned']).optional(),
+    assignedTo: z.string().regex(/^[0-9a-fA-F]{24}$/).optional(),
     tags: z.array(z.string()).optional(),
-    notes: z.string().max(5000).optional()
-  })
+    notes: z.string().max(5000).optional(),
+    lifetimeValue: z.number().min(0).optional()
 });
 
 export const idSchema = z.object({

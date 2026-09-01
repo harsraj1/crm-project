@@ -1,6 +1,6 @@
 import { Lead } from '../models/Lead.js';
-import { AppError, NotFoundError } from '../utils/errors.js';
-import { publishLeadCreated, publishLeadUpdated, requestAiSummary } from '../kafka/producer.js';
+import { AppError, NotFoundError } from '../utils/AppError.js';
+import { publishLeadCreated, publishLeadUpdated, requestAiSummary as publishAiSummaryRequest } from '../../kafka/producer.js';
 import { Activity } from '../models/Activity.js';
 
 export const getAllLeads = async (req, res, next) => {
@@ -106,9 +106,10 @@ export const getLead = async (req, res, next) => {
 
 export const createLead = async (req, res, next) => {
   try {
+    const canAssign = ['admin', 'manager'].includes(req.user.role);
     const leadData = {
       ...req.body,
-      assignedTo: req.body.assignedTo || req.user.id
+      assignedTo: canAssign && req.body.assignedTo ? req.body.assignedTo : req.user.id
     };
 
     const lead = await Lead.create(leadData);
@@ -160,10 +161,14 @@ export const updateLead = async (req, res, next) => {
 
 export const deleteLead = async (req, res, next) => {
   try {
-    const lead = await Lead.findByIdAndDelete(req.params.id);
+    const lead = await Lead.findById(req.params.id);
     if (!lead) throw new NotFoundError('Lead');
+    if (!['admin', 'manager'].includes(req.user.role) && lead.assignedTo?.toString() !== req.user.id) {
+      throw new AppError('Not authorized', 403);
+    }
 
-    res.status(204).json({ success: true });
+    await Promise.all([lead.deleteOne(), Activity.deleteMany({ lead: lead._id })]);
+    res.status(204).send();
   } catch (error) {
     next(error);
   }
@@ -173,6 +178,9 @@ export const addActivity = async (req, res, next) => {
   try {
     const lead = await Lead.findById(req.params.id);
     if (!lead) throw new NotFoundError('Lead');
+    if (!['admin', 'manager'].includes(req.user.role) && lead.assignedTo?.toString() !== req.user.id) {
+      throw new AppError('Not authorized', 403);
+    }
 
     const activity = await Activity.create({
       lead: lead._id,
@@ -197,9 +205,12 @@ export const requestAiSummary = async (req, res, next) => {
   try {
     const lead = await Lead.findById(req.params.id);
     if (!lead) throw new NotFoundError('Lead');
+    if (!['admin', 'manager'].includes(req.user.role) && lead.assignedTo?.toString() !== req.user.id) {
+      throw new AppError('Not authorized', 403);
+    }
 
     // Request AI summary via Kafka
-    await requestAiSummary({
+    await publishAiSummaryRequest({
       leadId: lead._id.toString(),
       userId: req.user.id,
       leadData: {
