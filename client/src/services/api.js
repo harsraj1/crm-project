@@ -28,6 +28,7 @@ export const authAPI = {
   login: (email, password) => api.post('/auth/login', { email, password }),
   register: (name, email, password) => api.post('/auth/register', { name, email, password }),
   getMe: () => api.get('/auth/me'),
+  updateProfile: (name, email) => api.patch('/auth/me', { name, email }),
   updatePassword: (currentPassword, newPassword) => api.patch('/auth/update-password', { currentPassword, newPassword })
 };
 
@@ -55,15 +56,4 @@ export const activitiesAPI = {
   create: (leadId, data) => api.post(`/activities/lead/${leadId}`, data),
   update: (id, data) => api.patch(`/activities/${id}`, data),
   delete: (id) => api.delete(`/activities/${id}`)
-};
-
-export const aiAPI = {
-  getSummary: (leadId) => api.get(`/ai/summary/${leadId}`),
-  getInsights: (leadId) => api.get(`/ai/insights/${leadId}`)
-};
-
-export const notificationsAPI = {
-  getAll: (params) => api.get('/notifications', { params }),
-  markRead: (id) => api.patch(`/notifications/${id}/read`),
-  markAllRead: () => api.patch('/notifications/read-all')
 };

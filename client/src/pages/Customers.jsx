@@ -1,11 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { customersAPI } from '../services/api';
-import { Link, useNavigate } from 'react-router-dom';
-import { Search, Plus, UserPlus, Filter, ChevronRight, Edit, Trash2, Mail, Phone, Building2, MapPin } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Search, UserPlus, Edit, Trash2, Mail, Phone, X } from 'lucide-react';
 import { clsx } from 'clsx';
 
 export default function Customers() {
-  const navigate = useNavigate();
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -14,9 +13,11 @@ export default function Customers() {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState(null);
+  const [error, setError] = useState('');
   const [form, setForm] = useState({ firstName: '', lastName: '', email: '', phone: '', company: '', status: 'prospect' });
 
-  const fetchCustomers = async () => {
+  const fetchCustomers = useCallback(async () => {
     setLoading(true);
     try {
       const params = { page, limit: 20, sort: '-createdAt' };
@@ -32,19 +33,52 @@ export default function Customers() {
     } finally {
       setLoading(false);
     }
+  }, [page, search, statusFilter]);
+
+  useEffect(() => { fetchCustomers(); }, [fetchCustomers]);
+
+  const resetForm = () => setForm({ firstName: '', lastName: '', email: '', phone: '', company: '', status: 'prospect' });
+
+  const closeModal = () => {
+    setShowCreateModal(false);
+    setEditingCustomer(null);
+    resetForm();
   };
 
-  useEffect(() => { fetchCustomers(); }, [page, search, statusFilter]);
-
-  const handleCreate = async (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
+    setError('');
     try {
-      await customersAPI.create(form);
-      setShowCreateModal(false);
-      setForm({ firstName: '', lastName: '', email: '', phone: '', company: '', status: 'prospect' });
-      fetchCustomers();
+      if (editingCustomer) await customersAPI.update(editingCustomer._id, form);
+      else await customersAPI.create(form);
+      closeModal();
+      await fetchCustomers();
     } catch (error) {
-      console.error('Failed to create customer:', error);
+      setError(error.response?.data?.error || 'Unable to save customer');
+    }
+  };
+
+  const handleEdit = (customer) => {
+    setEditingCustomer(customer);
+    setForm({
+      firstName: customer.firstName,
+      lastName: customer.lastName,
+      email: customer.email,
+      phone: customer.phone || '',
+      company: customer.company || '',
+      status: customer.status
+    });
+    setShowCreateModal(true);
+  };
+
+  const handleDelete = async (customer) => {
+    if (!window.confirm(`Delete ${customer.firstName} ${customer.lastName}? This cannot be undone.`)) return;
+    setError('');
+    try {
+      await customersAPI.delete(customer._id);
+      await fetchCustomers();
+    } catch (error) {
+      setError(error.response?.data?.error || 'Unable to delete customer');
     }
   };
 
@@ -75,6 +109,8 @@ export default function Customers() {
           </button>
         </div>
       </div>
+
+      {error && <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700" role="alert">{error}</div>}
 
       <div className="card overflow-hidden">
         <div className="overflow-x-auto">
@@ -126,13 +162,10 @@ export default function Customers() {
                     <td className="px-6 py-4 text-gray-600 dark:text-gray-400">${customer.lifetimeValue?.toLocaleString() || '0'}</td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end space-x-2">
-                        <Link to={`/customers/${customer._id}`} className="p-2 text-gray-400 hover:text-primary-600 dark:hover:text-primary-400" title="View">
-                          <ChevronRight className="w-5 h-5" />
-                        </Link>
-                        <button className="p-2 text-gray-400 hover:text-primary-600 dark:hover:text-primary-400" title="Edit">
+                        <button onClick={() => handleEdit(customer)} className="p-2 text-gray-400 hover:text-primary-600 dark:hover:text-primary-400" title="Edit">
                           <Edit className="w-5 h-5" />
                         </button>
-                        <button className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400" title="Delete">
+                        <button onClick={() => handleDelete(customer)} className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400" title="Delete">
                           <Trash2 className="w-5 h-5" />
                         </button>
                       </div>
@@ -167,17 +200,18 @@ export default function Customers() {
       {showCreateModal && (
         <CreateCustomerModal
           isOpen={showCreateModal}
-          onClose={() => setShowCreateModal(false)}
-          onSubmit={handleCreate}
+          onClose={closeModal}
+          onSubmit={handleSave}
           form={form}
           setForm={setForm}
+          editing={Boolean(editingCustomer)}
         />
       )}
     </div>
   );
 }
 
-function CreateCustomerModal({ isOpen, onClose, onSubmit, form, setForm }) {
+function CreateCustomerModal({ isOpen, onClose, onSubmit, form, setForm, editing }) {
   if (!isOpen) return null;
 
   const handleSubmit = (e) => {
@@ -191,7 +225,7 @@ function CreateCustomerModal({ isOpen, onClose, onSubmit, form, setForm }) {
         <div className="fixed inset-0 bg-black/50" onClick={onClose} />
         <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full p-6">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Create New Customer</h2>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{editing ? 'Edit Customer' : 'Create New Customer'}</h2>
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
               <X className="w-6 h-6" />
             </button>
@@ -230,7 +264,7 @@ function CreateCustomerModal({ isOpen, onClose, onSubmit, form, setForm }) {
             </div>
             <div className="flex space-x-3 pt-4">
               <button type="button" onClick={onClose} className="btn-secondary flex-1">Cancel</button>
-              <button type="submit" className="btn-primary flex-1">Create Customer</button>
+              <button type="submit" className="btn-primary flex-1">{editing ? 'Save Changes' : 'Create Customer'}</button>
             </div>
           </form>
         </div>

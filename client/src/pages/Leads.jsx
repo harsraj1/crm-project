@@ -1,13 +1,10 @@
-import { Lead, Mail, Phone, Calendar, Target, Users, Plus, Search, Filter, ChevronRight, MoreVertical, Edit, Trash2 } from 'lucide-react';
-import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Mail, Target, Users, Plus, Search, ChevronRight, Edit, Trash2, X, FileText, CheckCircle, XCircle } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { leadsAPI } from '../services/api';
-import { useAuth } from '../contexts/AuthContext';
 import { clsx } from 'clsx';
 
 export default function Leads() {
-  const { user } = useAuth();
-  const navigate = useNavigate();
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -17,9 +14,11 @@ export default function Leads() {
   const [total, setTotal] = useState(0);
   const [stats, setStats] = useState([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingLead, setEditingLead] = useState(null);
+  const [error, setError] = useState('');
   const [form, setForm] = useState({ name: '', email: '', company: '', status: 'new', value: 0, source: 'other' });
 
-  const fetchLeads = async () => {
+  const fetchLeads = useCallback(async () => {
     setLoading(true);
     try {
       const params = { page, limit: 20, sort: '-createdAt' };
@@ -39,25 +38,56 @@ export default function Leads() {
     } finally {
       setLoading(false);
     }
+  }, [page, search, statusFilter]);
+
+  useEffect(() => { fetchLeads(); }, [fetchLeads]);
+
+  const resetForm = () => setForm({ name: '', email: '', company: '', status: 'new', value: 0, source: 'other' });
+
+  const closeModal = () => {
+    setShowCreateModal(false);
+    setEditingLead(null);
+    resetForm();
   };
 
-  useEffect(() => { fetchLeads(); }, [page, search, statusFilter]);
-
-  const handleCreate = async (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
+    setError('');
     try {
-      await leadsAPI.create(form);
-      setShowCreateModal(false);
-      setForm({ name: '', email: '', company: '', status: 'new', value: 0, source: 'other' });
-      fetchLeads();
+      if (editingLead) await leadsAPI.update(editingLead._id, form);
+      else await leadsAPI.create(form);
+      closeModal();
+      await fetchLeads();
     } catch (error) {
-      console.error('Failed to create lead:', error);
+      setError(error.response?.data?.error || 'Unable to save lead');
+    }
+  };
+
+  const handleEdit = (lead) => {
+    setEditingLead(lead);
+    setForm({
+      name: lead.name,
+      email: lead.email,
+      company: lead.company || '',
+      status: lead.status,
+      value: lead.value || 0,
+      source: lead.source || 'other'
+    });
+    setShowCreateModal(true);
+  };
+
+  const handleDelete = async (lead) => {
+    if (!window.confirm(`Delete ${lead.name}? This cannot be undone.`)) return;
+    setError('');
+    try {
+      await leadsAPI.delete(lead._id);
+      await fetchLeads();
+    } catch (error) {
+      setError(error.response?.data?.error || 'Unable to delete lead');
     }
   };
 
   const statusOptions = ['new', 'contacted', 'qualified', 'proposal', 'negotiation', 'closed-won', 'closed-lost'];
-  const sourceOptions = ['website', 'referral', 'cold_call', 'email', 'social', 'event', 'other'];
-
   const getStatusConfig = (status) => {
     const config = {
       new: { label: 'New', color: 'gray', icon: Users },
@@ -105,6 +135,8 @@ export default function Leads() {
           </button>
         </div>
       </div>
+
+      {error && <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700" role="alert">{error}</div>}
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 mb-4">
         <StatChip label="Total" value={total} color="gray" />
@@ -162,10 +194,10 @@ export default function Leads() {
                         <Link to={`/leads/${lead._id}`} className="p-2 text-gray-400 hover:text-primary-600 dark:hover:text-primary-400" title="View">
                           <ChevronRight className="w-5 h-5" />
                         </Link>
-                        <button className="p-2 text-gray-400 hover:text-primary-600 dark:hover:text-primary-400" title="Edit">
+                        <button onClick={() => handleEdit(lead)} className="p-2 text-gray-400 hover:text-primary-600 dark:hover:text-primary-400" title="Edit">
                           <Edit className="w-5 h-5" />
                         </button>
-                        <button className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400" title="Delete">
+                        <button onClick={() => handleDelete(lead)} className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400" title="Delete">
                           <Trash2 className="w-5 h-5" />
                         </button>
                       </div>
@@ -212,10 +244,11 @@ export default function Leads() {
       {showCreateModal && (
         <CreateLeadModal
           isOpen={showCreateModal}
-          onClose={() => setShowCreateModal(false)}
-          onSubmit={handleCreate}
+          onClose={closeModal}
+          onSubmit={handleSave}
           form={form}
           setForm={setForm}
+          editing={Boolean(editingLead)}
         />
       )}
     </div>
@@ -239,7 +272,7 @@ function StatChip({ label, value, color }) {
   );
 }
 
-function CreateLeadModal({ isOpen, onClose, onSubmit, form, setForm }) {
+function CreateLeadModal({ isOpen, onClose, onSubmit, form, setForm, editing }) {
   if (!isOpen) return null;
 
   const handleSubmit = (e) => {
@@ -253,7 +286,7 @@ function CreateLeadModal({ isOpen, onClose, onSubmit, form, setForm }) {
         <div className="fixed inset-0 bg-black/50" onClick={onClose} />
         <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full p-6">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Create New Lead</h2>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{editing ? 'Edit Lead' : 'Create New Lead'}</h2>
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
               <X className="w-6 h-6" />
             </button>
@@ -329,7 +362,7 @@ function CreateLeadModal({ isOpen, onClose, onSubmit, form, setForm }) {
               >
                 <option value="website">Website</option>
                 <option value="referral">Referral</option>
-                <option value="cold_call">Cold Call</option>
+                <option value="cold-call">Cold Call</option>
                 <option value="email">Email</option>
                 <option value="social">Social Media</option>
                 <option value="event">Event</option>
@@ -338,7 +371,7 @@ function CreateLeadModal({ isOpen, onClose, onSubmit, form, setForm }) {
             </div>
             <div className="flex space-x-3 pt-4">
               <button type="button" onClick={onClose} className="btn-secondary flex-1">Cancel</button>
-              <button type="submit" className="btn-primary flex-1">Create Lead</button>
+              <button type="submit" className="btn-primary flex-1">{editing ? 'Save Changes' : 'Create Lead'}</button>
             </div>
           </form>
         </div>

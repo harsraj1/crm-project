@@ -1,3 +1,4 @@
+/* oxlint-disable react/only-export-components */
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { authAPI } from '../services/api';
 
@@ -26,11 +27,24 @@ export function AuthProvider({ children }) {
     setUser(null);
   }, []);
 
+  const updateProfile = useCallback(async (name, email) => {
+    const { data } = await authAPI.updateProfile(name, email);
+    setUser(data.user);
+    return data;
+  }, []);
+
+  const updatePassword = useCallback(async (currentPassword, newPassword) => {
+    const { data } = await authAPI.updatePassword(currentPassword, newPassword);
+    localStorage.setItem('token', data.token);
+    setUser(data.user);
+    return data;
+  }, []);
+
   const fetchUser = useCallback(async () => {
     try {
       const { data } = await authAPI.getMe();
       setUser(data.user);
-    } catch (error) {
+    } catch {
       localStorage.removeItem('token');
       setUser(null);
     } finally {
@@ -46,7 +60,7 @@ export function AuthProvider({ children }) {
     }
   }, [fetchUser]);
 
-  const value = { user, login, register, logout, loading };
+  const value = { user, login, register, logout, updateProfile, updatePassword, loading };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

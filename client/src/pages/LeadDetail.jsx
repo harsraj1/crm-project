@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { leadsAPI, activitiesAPI } from '../services/api';
-import { Mail, Phone, DollarSign, Calendar, MapPin, Building2, Tag, Loader2, ChevronLeft, Edit, Trash2, Plus, Sparkles, MessageSquare, Clock, User, X, Check } from 'lucide-react';
+import { Mail, Phone, DollarSign, Calendar, Building2, Loader2, ChevronLeft, Plus, Sparkles, MessageSquare, Clock, User, Check } from 'lucide-react';
 import { clsx } from 'clsx';
 
 export default function LeadDetail() {
@@ -14,7 +14,7 @@ export default function LeadDetail() {
   const [showActivityForm, setShowActivityForm] = useState(false);
   const [activityForm, setActivityForm] = useState({ type: 'call', subject: '', description: '', duration: 0, outcome: '', nextFollowUp: '' });
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const [leadRes, activitiesRes] = await Promise.all([
         leadsAPI.getOne(id),
@@ -28,9 +28,9 @@ export default function LeadDetail() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, navigate]);
 
-  useEffect(() => { fetchData(); }, [id]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   const handleActivitySubmit = async (e) => {
     e.preventDefault();

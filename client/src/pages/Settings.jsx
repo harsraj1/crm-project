@@ -1,11 +1,10 @@
-import { Settings, User, Shield, Bell, Palette, Loader2, Save } from 'lucide-react';
+import { User, Shield, Bell, Palette, Loader2, Save } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { authAPI } from '../services/api';
 import { clsx } from 'clsx';
 
 export default function Settings() {
-  const { user, updatePassword } = useAuth();
+  const { user, updateProfile, updatePassword } = useAuth();
   const [activeTab, setActiveTab] = useState('profile');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState('');
@@ -26,7 +25,7 @@ export default function Settings() {
     setLoading(true);
     setError('');
     try {
-      // await authAPI.updateProfile(profile);
+      await updateProfile(profile.name, profile.email);
       setSuccess('Profile updated successfully');
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {

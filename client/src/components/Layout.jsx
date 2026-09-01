@@ -1,6 +1,6 @@
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LayoutDashboard, Users, UserPlus, Settings, LogOut, BarChart2, Bell } from 'lucide-react';
+import { LayoutDashboard, Users, UserPlus, Settings, LogOut, Bell } from 'lucide-react';
 import { clsx } from 'clsx';
 
 export default function Layout() {
@@ -23,7 +23,6 @@ export default function Layout() {
           </div>
           <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
             {navigation.map((item) => {
-              const isActive = location.pathname.startsWith(item.href);
               return (
                 <NavLink
                   key={item.name}
