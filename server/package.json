@@ -9,6 +9,8 @@
     "start": "node src/index.js",
     "test": "jest --coverage",
     "lint": "eslint src/**/*.js",
+    "seed": "node src/scripts/seed.js",
+    "smoke": "node src/scripts/smoke.js",
     "kafka:consumer": "node kafka/consumer.js",
     "kafka:producer": "node kafka/producer.js"
   },
