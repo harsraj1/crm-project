@@ -1,6 +1,14 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { Users, Target, DollarSign } from 'lucide-react';
+import {
+  Users,
+  Target,
+  DollarSign,
+  Mail,
+  FileText,
+  CheckCircle,
+  XCircle,
+} from 'lucide-react';
 import { leadsAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
